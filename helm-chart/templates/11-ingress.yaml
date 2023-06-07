@@ -1,5 +1,47 @@
 ---
 {{- if .Values.tap.ingress.enabled }}
+  {{- if .Values.tap.ingress.alb.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    alb.ingress.kubernetes.io/certificate-arn: '{{ .Values.tap.ingress.alb.certificateArn }}'
+    alb.ingress.kubernetes.io/inbound-cidrs: {{ .Values.tap.ingress.alb.inboundCidr }}
+    alb.ingress.kubernetes.io/listen-ports: "[{\"HTTP\": 80}, {\"HTTPS\":443}]"
+    alb.ingress.kubernetes.io/load-balancer-name: "kubeshark-alb"
+    alb.ingress.kubernetes.io/scheme: {{ ternary "internet-facing" "internal" (eq .Values.tap.ingress.alb.public true) | quote }}
+    alb.ingress.kubernetes.io/ssl-policy: "ELBSecurityPolicy-TLS13-1-2-2021-06"
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/target-type: "ip"
+    external-dns.alpha.kubernetes.io/hostname: {{ .Values.tap.ingress.host }}
+  generation: 1
+  labels:
+    kubeshark-cli-version: v1
+    kubeshark-created-by: kubeshark
+    kubeshark-managed-by: kubeshark
+  name: kubeshark-ingress
+  namespace: '{{ .Values.tap.selfnamespace }}'
+spec:
+  ingressClassName: alb
+  rules:
+    - host: {{ .Values.tap.ingress.host }}
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: kubeshark-nginx
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kubeshark-front
+                port:
+                  number: 80
+  {{- else }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -36,4 +78,5 @@ spec:
   tls: {{ .Values.tap.ingress.tls | toYaml }}
 status:
   loadBalancer: {}
+  {{- end }}
 {{- end }}

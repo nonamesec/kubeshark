@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: kubeshark-nginx
+    kubeshark-created-by: kubeshark
+    kubeshark-managed-by: kubeshark
+  name: kubeshark-nginx
+  namespace: '{{ .Values.tap.selfnamespace }}'
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kubeshark-nginx
+  template:
+    metadata:
+      labels:
+        app: kubeshark-nginx
+    spec:
+      containers:
+        - image: 'nginx'
+          imagePullPolicy: '{{ .Values.tap.docker.imagepullpolicy }}'
+          name: kubeshark-nginx
+          ports:
+            - containerPort: 80
+          resources:
+            limits:
+              cpu: '{{ .Values.tap.resources.nginx.limits.cpu }}'
+              memory: '{{ .Values.tap.resources.nginx.limits.memory }}'
+            requests:
+              cpu: '{{ .Values.tap.resources.nginx.requests.cpu }}'
+              memory: '{{ .Values.tap.resources.nginx.requests.memory }}'
+          volumeMounts:
+            - name: nginx-config-volume
+              mountPath: /etc/nginx/conf.d
+      serviceAccountName: kubeshark-service-account
+      volumes:
+        - name: nginx-config-volume
+          configMap:
+            name: nginx-config
+      dnsPolicy: ClusterFirstWithHostNet
+      tolerations:
+        - effect: NoExecute
+          operator: Exists
+        - effect: NoSchedule
+          operator: Exists

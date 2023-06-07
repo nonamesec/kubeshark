@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: kubeshark-hub
+    kubeshark-created-by: kubeshark
+    kubeshark-managed-by: kubeshark
+  name: kubeshark-hub
+  namespace: '{{ .Values.tap.selfnamespace }}'
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kubeshark-hub
+  template:
+    metadata:
+      labels:
+        app: kubeshark-hub
+    spec:
+      containers:
+        - command:
+            - '{{ .Values.tap.debug | ternary "./hub -debug" "./hub" }}'
+          env:
+            - name: POD_REGEX
+              value: '{{ .Values.tap.regex }}'
+            - name: NAMESPACES
+              value: '{{ gt (len .Values.tap.namespaces) 0 | ternary (join "," .Values.tap.namespaces) "" }}'
+            - name: LICENSE
+              value: '{{ .Values.license }}'
+            - name: SCRIPTING_ENV
+              value: '{}'
+            - name: SCRIPTING_SCRIPTS
+              value: '[]'
+            - name: AUTH_APPROVED_DOMAINS
+              value: '{{ gt (len .Values.tap.ingress.auth.approvedDomains) 0 | ternary (join "," .Values.tap.ingress.auth.approvedDomains) "" }}'
+          image: '{{ .Values.tap.docker.registry }}/hub:{{ .Values.tap.docker.tag }}'
+          imagePullPolicy: '{{ .Values.tap.docker.imagepullpolicy }}'
+          name: kubeshark-hub
+          ports:
+            - containerPort: 80
+          resources:
+            limits:
+              cpu: '{{ .Values.tap.resources.hub.limits.cpu }}'
+              memory: '{{ .Values.tap.resources.hub.limits.memory }}'
+            requests:
+              cpu: '{{ .Values.tap.resources.hub.requests.cpu }}'
+              memory: '{{ .Values.tap.resources.hub.requests.memory }}'
+      dnsPolicy: ClusterFirstWithHostNet
+      serviceAccountName: kubeshark-service-account
+      tolerations:
+        - effect: NoExecute
+          operator: Exists
+        - effect: NoSchedule
+          operator: Exists
